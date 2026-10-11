@@ -70,7 +70,7 @@ jobs:
           if [ -z "$SOURCE_TOKEN" ]; then echo "::notice::No private read token; deploying the last committed static build in site/"; fi
       - name: Declare exact deployed upstream commit
         id: built-source
-        run: echo "sha=$(node -p 'require(\"./site/revision.json\").commit')" >> "$GITHUB_OUTPUT"
+        run: echo "sha=$(node -p 'require("./site/revision.json").commit')" >> "$GITHUB_OUTPUT"
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload static-only Pages artifact
