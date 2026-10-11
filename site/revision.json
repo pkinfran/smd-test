@@ -1,0 +1,5 @@
+{
+  "upstream": "pkinfran/taptap_gpt",
+  "commit": "pending",
+  "base": "/smd-test/"
+}
