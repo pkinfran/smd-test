@@ -124,7 +124,8 @@ jobs:
               await page.locator('[data-testid="s108-reset"]').tap();
               await page.locator('.s108-back').tap();
               if(!page.url().includes('/smd-test/lab')) throw Error('Back button lost Pages base: '+page.url());
-              if(!(await page.locator('.unit-stack').count()))throw Error('Visual Lab directory not found');
+              console.log("Returned to Visual Lab", page.url());
+              await page.locator(".unit-stack").first().waitFor({ state: "visible", timeout: 15000 });
               const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth);
               if(overflow>2)throw Error('Overflow '+overflow);
               if(errors.length)throw Error('Page JS exceptions '+errors.join('; '));
