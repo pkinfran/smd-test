@@ -28,6 +28,8 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      source_sha: ${{ steps.built-source.outputs.sha }}
     timeout-minutes: 15
     env:
       SOURCE_TOKEN: ${{ secrets.TAPTAP_SOURCE_TOKEN }}
@@ -66,6 +68,9 @@ jobs:
           test -f site/.nojekyll
           node -e 'const x = require("./site/revision.json"); if(x.base!=="/smd-test/")process.exit(1);console.log("Hosted build:",x)'
           if [ -z "$SOURCE_TOKEN" ]; then echo "::notice::No private read token; deploying the last committed static build in site/"; fi
+      - name: Declare exact deployed upstream commit
+        id: built-source
+        run: echo "sha=$(node -p 'require(\"./site/revision.json\").commit')" >> "$GITHUB_OUTPUT"
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload static-only Pages artifact
@@ -86,7 +91,9 @@ jobs:
 
   browser-smoke:
     runs-on: ubuntu-latest
-    needs: deploy
+    needs: [build, deploy]
+    env:
+      EXPECTED_SHA: ${{ needs.build.outputs.source_sha }}
     timeout-minutes: 15
     steps:
       - name: Install real Chromium
@@ -102,20 +109,28 @@ jobs:
           node --input-type=module <<'JS'
           import { chromium } from 'playwright';
           const origin = 'https://pkinfran.github.io/smd-test';
+          const expected = process.env.EXPECTED_SHA;
+          if (!/^[a-f0-9]{40}$/.test(expected)) throw Error('No source SHA in build output');
           const browser = await chromium.launch();
           try {
-            for(const width of [320,390]) {
+            for(const width of [320,375,390]) {
               const page = await browser.newPage({ viewport:{width,height:844},isMobile:true,hasTouch:true });
               const errors = []; page.on('pageerror', error => errors.push(error.message));
-              let response;
-              for(let attempt=0;attempt<18;attempt++) {
+              let response, liveRevision = '';
+              for(let attempt=0;attempt<30;attempt++) {
                 try {
+                  const published = await page.request.get(origin+'/revision.json?source='+expected.slice(0,10),{timeout:20000});
+                  if(published.ok())liveRevision=(await published.json()).commit;
                   response=await page.goto(origin+'/lab/S1-U08/', {waitUntil:'networkidle',timeout:20000});
-                  if(response?.status()===200 && await page.locator('[data-testid="start-game"]').count())break;
+                  const banner=await page.locator('.s108-meta').innerText({timeout:3000});
+                  if(response?.status()===200 && liveRevision===expected && banner.includes(expected.slice(0,7)))break;
+                  console.log('Waiting for Pages published SHA:',liveRevision,'expected',expected.slice(0,7));
                 } catch(e) { console.log('Pages propagation pending',attempt,String(e)); }
-                await page.waitForTimeout(5000);
+                await page.waitForTimeout(4000);
               }
               if(response?.status()!==200) throw Error('Pages deep-link status '+response?.status());
+              if(liveRevision!==expected) throw Error('Wrong deployed source SHA: '+liveRevision+' vs '+expected);
+              if(!(await page.locator('.s108-meta').innerText()).includes(expected.slice(0,7)))throw Error('Wrong displayed SHA');
               await page.locator('[data-testid="start-game"]').tap();
               if(!(await page.locator('.sd-hud').innerText()).includes('1,288'))throw Error('HUD wrong');
               await page.locator('[data-testid="open-shop-card"]').tap();
@@ -123,9 +138,11 @@ jobs:
               await page.locator('[data-testid="back-menu"]').tap();
               await page.locator('[data-testid="s108-reset"]').tap();
               await page.locator('.s108-back').tap();
-              if(!page.url().includes('/smd-test/lab')) throw Error('Back button lost Pages base: '+page.url());
-              console.log("Returned to Visual Lab", page.url());
+              await page.waitForURL(url => new URL(url).pathname.replace(/\/$/,'')==='/smd-test/lab',{timeout:15000});
               await page.locator(".unit-stack").first().waitFor({ state: "visible", timeout: 15000 });
+              console.log("Returned to Visual Lab", page.url());
+              await page.locator('[data-unit-id="S0-U03"]').tap();
+              await page.locator('[data-testid="taptap-scenario"]').waitFor({state:"visible",timeout:15000});
               const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth);
               if(overflow>2)throw Error('Overflow '+overflow);
               if(errors.length)throw Error('Page JS exceptions '+errors.join('; '));
@@ -138,6 +155,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: github-pages-mobile-320-390
+          name: github-pages-mobile-320-375-390
           path: /tmp/smd-shots/*.png
           if-no-files-found: ignore
