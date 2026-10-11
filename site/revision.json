@@ -1,7 +1,7 @@
 {
   "upstream": "pkinfran/taptap_gpt",
-  "commit": "0156da6cb65df1e77d6ec65e027528f95e32450d",
+  "commit": "15bf4949c6156d7342c8e19f92c998d31e1c8811",
   "base": "/smd-test/",
-  "exportRun": "https://github.com/pkinfran/taptap_gpt/actions/runs/38117168720",
-  "experience": "illustrated-interactive-store/touch-fix"
+  "exportRun": "https://github.com/pkinfran/taptap_gpt/actions/runs/38117701978",
+  "experience": "distinct-overview-ledger-and-shop"
 }
