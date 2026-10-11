@@ -1,7 +1,7 @@
 {
   "upstream": "pkinfran/taptap_gpt",
-  "commit": "a50b8a80a6d2703ccfa163a0c304539b6e2398b0",
+  "commit": "0156da6cb65df1e77d6ec65e027528f95e32450d",
   "base": "/smd-test/",
-  "exportRun": "https://github.com/pkinfran/taptap_gpt/actions/runs/38116920052",
-  "experience": "illustrated-interactive-store"
+  "exportRun": "https://github.com/pkinfran/taptap_gpt/actions/runs/38117168720",
+  "experience": "illustrated-interactive-store/touch-fix"
 }
