@@ -131,8 +131,26 @@ jobs:
               if(response?.status()!==200) throw Error('Pages deep-link status '+response?.status());
               if(liveRevision!==expected) throw Error('Wrong deployed source SHA: '+liveRevision+' vs '+expected);
               if(!(await page.locator('.s108-meta').innerText()).includes(expected.slice(0,7)))throw Error('Wrong displayed SHA');
+              if(await page.locator('.sd-menu-art svg').count()!==1)throw Error('Full storefront illustration missing');
+              await page.screenshot({path:'/tmp/smd-shots/menu-'+width+'.png',fullPage:true});
               await page.locator('[data-testid="start-game"]').tap();
               if(!(await page.locator('.sd-hud').innerText()).includes('1,288'))throw Error('HUD wrong');
+              if(await page.locator('.sd-world-art svg').count()!==1)throw Error('Game shop scene illustration missing');
+              const sceneShapes=await page.locator('.sd-world-art svg path, .sd-world-art svg rect, .sd-world-art svg ellipse, .sd-world-art svg circle').count();
+              if(sceneShapes<65)throw Error('Not a genuine illustrated store: only '+sceneShapes+' SVG shapes');
+              if(await page.locator('[data-scene="shop"]').getAttribute('aria-current')!=='page')throw Error('Start did not enter actual shop scene');
+              await page.screenshot({path:'/tmp/smd-shots/shop-'+width+'.png',fullPage:true});
+              for(const id of ['customer','counter','shelf','bench']){
+                const spot=page.locator('[data-testid="scene-hotspot-'+id+'"]');
+                await spot.tap();
+                if(await spot.getAttribute('aria-pressed')!=='true')throw Error('Shop object not selected: '+id);
+                await page.locator('[data-testid="scene-detail"]').waitFor({state:'visible',timeout:5000});
+                if(id==='customer')await page.screenshot({path:'/tmp/smd-shots/detail-'+width+'.png',fullPage:true});
+                await page.locator('[data-testid="scene-detail-close"]').tap();
+                if(await page.locator('[data-testid="scene-detail"]').count())throw Error('Scene detail did not close: '+id);
+              }
+              if(!(await page.locator('[data-scene="trade"]').isDisabled()))throw Error('Unimplemented trade cannot be enabled');
+              if(!(await page.locator('[data-scene="people"]').isDisabled()))throw Error('Unimplemented people cannot be enabled');
               await page.locator('[data-testid="open-shop-card"]').tap();
               await page.locator('[data-scene="dashboard"]').tap();
               await page.locator('[data-testid="back-menu"]').tap();
@@ -147,7 +165,7 @@ jobs:
               if(overflow>2)throw Error('Overflow '+overflow);
               if(errors.length)throw Error('Page JS exceptions '+errors.join('; '));
               await page.screenshot({path:'/tmp/smd-shots/pages-'+width+'.png',fullPage:true});
-              console.log('PASS GitHub Pages '+width+'px: deep-link, HUD, touch, return, no errors or overflow');
+              console.log('PASS GitHub Pages '+width+'px: storefront+shop SVG, four hotspots+detail, HUD, locked, deep-link+return, no JS/overflow');
               await page.close();
             }
           } finally { await browser.close(); }
