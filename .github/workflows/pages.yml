@@ -153,6 +153,16 @@ jobs:
               if(!(await page.locator('[data-scene="people"]').isDisabled()))throw Error('Unimplemented people cannot be enabled');
               await page.locator('[data-testid="open-shop-card"]').tap();
               await page.locator('[data-scene="dashboard"]').tap();
+              await page.locator('[data-testid="overview-world"]').waitFor({state:'visible',timeout:5000});
+              if(await page.locator('[data-testid="shop-world"]').count()) throw Error('Overview reused shop instead of a distinct screen');
+              if(!(await page.locator('[data-testid="overview-world"]').innerText()).includes('我的经营账本'))throw Error('Overview ledger content missing');
+              if(await page.locator('[data-scene="dashboard"]').getAttribute('aria-current')!=='page')throw Error('Overview not selected');
+              await page.screenshot({path:'/tmp/smd-shots/overview-'+width+'.png',fullPage:true});
+              await page.locator('[data-testid="overview-back-shop"]').tap();
+              await page.locator('[data-testid="shop-world"]').waitFor({state:'visible',timeout:5000});
+              if(await page.locator('[data-testid="overview-world"]').count())throw Error('Overview did not close after return');
+              await page.locator('[data-scene="dashboard"]').tap();
+              if(await page.locator('[data-testid="overview-world"]').count()!==1)throw Error('Overview repeat navigation failed');
               await page.locator('[data-testid="back-menu"]').tap();
               await page.locator('[data-testid="s108-reset"]').tap();
               await page.locator('.s108-back').tap();
@@ -165,7 +175,7 @@ jobs:
               if(overflow>2)throw Error('Overflow '+overflow);
               if(errors.length)throw Error('Page JS exceptions '+errors.join('; '));
               await page.screenshot({path:'/tmp/smd-shots/pages-'+width+'.png',fullPage:true});
-              console.log('PASS GitHub Pages '+width+'px: storefront+shop SVG, four hotspots+detail, HUD, locked, deep-link+return, no JS/overflow');
+              console.log('PASS GitHub Pages '+width+'px: storefront+shop SVG, four hotspots+detail, distinct ledger+return, HUD, locked, deep-link+return, no JS/overflow');
               await page.close();
             }
           } finally { await browser.close(); }
