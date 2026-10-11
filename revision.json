@@ -1,6 +1,7 @@
 {
   "upstream": "pkinfran/taptap_gpt",
-  "commit": "d069cea4693929565561257704cf41f6efe8a04a",
+  "commit": "a50b8a80a6d2703ccfa163a0c304539b6e2398b0",
   "base": "/smd-test/",
-  "exportRun": "https://github.com/pkinfran/taptap_gpt/actions/runs/38111775257"
+  "exportRun": "https://github.com/pkinfran/taptap_gpt/actions/runs/38116920052",
+  "experience": "illustrated-interactive-store"
 }
