@@ -1,5 +1,6 @@
 {
   "upstream": "pkinfran/taptap_gpt",
-  "commit": "pending",
-  "base": "/smd-test/"
+  "commit": "c5d766ea3ee7db1a4e61d853a308596c5b766074",
+  "base": "/smd-test/",
+  "exportRun": "https://github.com/pkinfran/taptap_gpt/actions/runs/38111659077"
 }
