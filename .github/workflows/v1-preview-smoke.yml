@@ -47,11 +47,11 @@ jobs:
                 await page.waitForTimeout(3500);
               }
               if(!ready)throw Error('V1 preview not live at '+url);
-              if(!(await page.locator('img[src$="menu.webp"]').evaluate(img=>img.complete && img.naturalWidth>=800)))throw Error('Menu art missing');
+              await page.waitForFunction(() => {const img=document.querySelector('img[src$="menu.webp"]');return img?.complete && img.naturalWidth>=800;},{timeout:12000});
               await page.screenshot({path:'/tmp/smd-v1-screens/menu-'+width+'.png'});
               await page.locator('[data-action="start"]').tap();
               await page.locator('[data-testid="shop-world"]').waitFor({state:'visible'});
-              if(!(await page.locator('img[src$="shop.webp"]').evaluate(img=>img.complete && img.naturalWidth>=800)))throw Error('Shop art missing');
+              await page.waitForFunction(() => {const img=document.querySelector('img[src$="shop.webp"]');return img?.complete && img.naturalWidth>=800;},{timeout:12000});
               await page.screenshot({path:'/tmp/smd-v1-screens/shop-'+width+'.png'});
               for (const id of ['customer','shelf','repair','device']) {
                 const spot=page.locator('[data-spot="'+id+'"]');
