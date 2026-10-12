@@ -1,0 +1,88 @@
+name: V1 Concept Art Mobile Interaction
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'site/v1-preview/**'
+      - 'v1-preview/**'
+      - '.github/workflows/v1-preview-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mobile-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Install real Chromium
+        run: |
+          mkdir -p /tmp/smd-v1-test /tmp/smd-v1-screens
+          cd /tmp/smd-v1-test
+          npm init -y >/dev/null
+          npm install --no-audit --no-fund playwright >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+      - name: Test actual public art preview on Android-size touch viewports
+        run: |
+          cd /tmp/smd-v1-test
+          node --input-type=module <<'JS'
+          import {chromium} from 'playwright';
+          const browser = await chromium.launch();
+          const url = 'https://pkinfran.github.io/smd-test/v1-preview/';
+          try {
+            for (const width of [320,375,390]) {
+              const page = await browser.newPage({viewport:{width,height:844},isMobile:true,hasTouch:true});
+              const errors = [];
+              page.on('pageerror', err => errors.push(err.message));
+              let ready = false;
+              for (let tries=0;tries<25;tries++) {
+                try {
+                  const r = await page.goto(url, {waitUntil:'domcontentloaded',timeout:12000});
+                  if(r?.status()===200 && await page.locator('[data-action="start"]').count()) {
+                    await page.locator('[data-action="start"]').waitFor({state:'visible'});
+                    ready=true;break;
+                  }
+                } catch(e){console.log('Waiting for live Pages',tries,String(e));}
+                await page.waitForTimeout(3500);
+              }
+              if(!ready)throw Error('V1 preview not live at '+url);
+              if(!(await page.locator('img[src$="menu.webp"]').evaluate(img=>img.complete && img.naturalWidth>=800)))throw Error('Menu art missing');
+              await page.screenshot({path:'/tmp/smd-v1-screens/menu-'+width+'.png'});
+              await page.locator('[data-action="start"]').tap();
+              await page.locator('[data-testid="shop-world"]').waitFor({state:'visible'});
+              if(!(await page.locator('img[src$="shop.webp"]').evaluate(img=>img.complete && img.naturalWidth>=800)))throw Error('Shop art missing');
+              await page.screenshot({path:'/tmp/smd-v1-screens/shop-'+width+'.png'});
+              for (const id of ['customer','shelf','repair','device']) {
+                const spot=page.locator('[data-spot="'+id+'"]');
+                await spot.tap();
+                await page.locator('[data-testid="scene-detail"]').waitFor({state:'visible'});
+                if(await spot.getAttribute('aria-pressed')!=='true')throw Error('Hotspot did not select '+id);
+                await page.locator('[data-action="close"]').tap();
+                if(await page.locator('[data-testid="scene-detail"]').count())throw Error('Hotspot modal did not close');
+              }
+              if(!(await page.locator('[data-scene="trade"]').isDisabled()))throw Error('Trade must remain locked');
+              await page.locator('[data-scene="dashboard"]').tap();
+              await page.locator('[data-testid="overview-world"]').waitFor({state:'visible'});
+              if(await page.locator('[data-testid="shop-world"]').count())throw Error('Overview reuses shop scene');
+              if(!(await page.locator('[data-testid="overview-world"]').innerText()).includes('经营账本'))throw Error('Ledger missing');
+              await page.screenshot({path:'/tmp/smd-v1-screens/overview-'+width+'.png'});
+              await page.locator('[data-action="backShop"]').tap();
+              await page.locator('[data-testid="shop-world"]').waitFor({state:'visible'});
+              await page.locator('[data-action="menu"]').tap();
+              await page.locator('[data-action="start"]').waitFor({state:'visible'});
+              if(errors.length)throw Error('Page JS errors: '+errors.join('; '));
+              const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth);
+              if(overflow>1)throw Error('Horizontal overflow '+overflow);
+              console.log('PASS V1 Art Preview '+width+'px: images, touch hotspots, overview, return, locked, no errors or overflow');
+              await page.close();
+            }
+          } finally {await browser.close();}
+          JS
+      - name: Upload visual screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v1-menu-shop-overview-320-375-390
+          path: /tmp/smd-v1-screens/*.png
+          if-no-files-found: ignore
